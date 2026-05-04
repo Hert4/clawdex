@@ -1,0 +1,14 @@
+{
+  "name": "clawdex",
+  "owner": {
+    "name": "Hert4",
+    "url": "https://github.com/Hert4"
+  },
+  "plugins": [
+    {
+      "name": "clawdex",
+      "source": ".",
+      "description": "Petdex animated pets for Claude Code — reactive desktop companion that mirrors session state."
+    }
+  ]
+}

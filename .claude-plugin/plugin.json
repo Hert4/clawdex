@@ -1,0 +1,12 @@
+{
+  "name": "clawdex",
+  "version": "0.1.0",
+  "description": "Petdex animated pets for Claude Code — reactive desktop companion that mirrors session state.",
+  "author": {
+    "name": "Hert4"
+  },
+  "homepage": "https://github.com/Hert4/clawdex",
+  "repository": "https://github.com/Hert4/clawdex",
+  "license": "MIT",
+  "keywords": ["pet", "petdex", "companion", "claude-code", "ui"]
+}

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# clawdex pet wrapper — handles arg resolution then forwards to ctl.py.
+#
+# Usage:
+#   pet                  → status
+#   pet list             → list pets
+#   pet boba             → switch to boba (unknown subcommand → treated as switch)
+#   pet stop|start|...   → passed through unchanged
+#
+# When invoked via `! pet ...` in the Claude Code REPL the output lands
+# directly in the conversation without round-trip reasoning.
+
+set -e
+
+PYTHON="${CLAWDEX_PYTHON:-/usr/local/bin/python3.11}"
+CTL="${CLAWDEX_CTL:-/home/dev/Develop_2026/clawdex/src/ctl.py}"
+
+if [ $# -eq 0 ]; then
+  exec "$PYTHON" "$CTL" status
+fi
+
+case "$1" in
+  start|stop|restart|switch|list|status|scale|state|hook)
+    exec "$PYTHON" "$CTL" "$@"
+    ;;
+  *)
+    # Unknown first arg → assume the user named a pet ("/pet boba" → switch boba).
+    exec "$PYTHON" "$CTL" switch "$@"
+    ;;
+esac
