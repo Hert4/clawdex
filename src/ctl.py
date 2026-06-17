@@ -213,7 +213,7 @@ def hook_session_id() -> str:
 
 
 def ensure_deps() -> None:
-    """Auto-install PyQt5 + Pillow + psutil if missing."""
+    """Auto-install PyQt5 + Pillow + psutil (and pyobjc on macOS) if missing."""
     missing = []
     try:
         import PyQt5  # noqa: F401
@@ -227,6 +227,12 @@ def ensure_deps() -> None:
         import psutil  # noqa: F401
     except ImportError:
         missing.append("psutil")
+    if sys.platform == "darwin":
+        # pyobjc lets the pet float above other apps and drop its Dock icon.
+        try:
+            import AppKit  # noqa: F401
+        except ImportError:
+            missing.append("pyobjc-framework-Cocoa")
     if not missing:
         return
     print(f"clawdex: installing missing deps: {', '.join(missing)}", file=sys.stderr)

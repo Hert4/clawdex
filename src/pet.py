@@ -235,6 +235,44 @@ class PetWindow(QWidget):
             self.set_state("farewell")
 
 
+def _macos_float_overlay(widget) -> None:
+    """macOS: drop the Dock icon and keep the pet above other apps.
+
+    Qt.Tool maps to an NSPanel, which hides on deactivate by default (the pet
+    vanishes whenever another app is focused) and leaves the app showing a
+    Python Dock icon. Switch the app to an accessory/agent (no Dock icon) and
+    pin the panel so it floats over every app and Space.
+    """
+    if sys.platform != "darwin":
+        return
+    try:
+        import objc
+        from ctypes import c_void_p
+        from AppKit import (
+            NSApplication,
+            NSApplicationActivationPolicyAccessory,
+            NSWindowCollectionBehaviorCanJoinAllSpaces,
+            NSWindowCollectionBehaviorStationary,
+            NSWindowCollectionBehaviorFullScreenAuxiliary,
+            NSStatusWindowLevel,
+        )
+    except ImportError:
+        return
+    NSApplication.sharedApplication().setActivationPolicy_(
+        NSApplicationActivationPolicyAccessory
+    )
+    window = objc.objc_object(c_void_p=int(widget.winId())).window()
+    if window is None:
+        return
+    window.setHidesOnDeactivate_(False)
+    window.setLevel_(NSStatusWindowLevel)
+    window.setCollectionBehavior_(
+        NSWindowCollectionBehaviorCanJoinAllSpaces
+        | NSWindowCollectionBehaviorStationary
+        | NSWindowCollectionBehaviorFullScreenAuxiliary
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pet", required=True)
@@ -263,6 +301,7 @@ def main() -> int:
     frames = load_frames(pet_path, args.scale)
     w = PetWindow(args.pet, frames, state_file, claude_pid_file, args.position_index)
     w.show()
+    _macos_float_overlay(w)
     return app.exec_()
 
 

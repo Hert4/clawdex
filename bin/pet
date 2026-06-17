@@ -12,8 +12,9 @@
 
 set -e
 
-PYTHON="${CLAWDEX_PYTHON:-/usr/local/bin/python3.11}"
-CTL="${CLAWDEX_CTL:-/home/dev/Develop_2026/clawdex/src/ctl.py}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON="${CLAWDEX_PYTHON:-python3}"
+CTL="${CLAWDEX_CTL:-$HERE/../src/ctl.py}"
 
 if [ $# -eq 0 ]; then
   exec "$PYTHON" "$CTL" status
