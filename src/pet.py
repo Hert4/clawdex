@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -84,6 +85,11 @@ def _pid_alive(pid: int) -> bool:
 
 
 class PetWindow(QWidget):
+    # Idle wander: stroll speed/cadence along the screen bottom.
+    WALK_INTERVAL_MS = 40
+    WALK_SPEED_PX = 3
+    EDGE_MARGIN = 12
+
     def __init__(
         self,
         pet_name: str,
@@ -124,6 +130,17 @@ class PetWindow(QWidget):
 
         self.anim_timer = QTimer(self)
         self.anim_timer.timeout.connect(self.tick)
+
+        # Idle-wander state: pet strolls left/right along the screen bottom.
+        self._display_anim = "idle"
+        self._walk_dir = 1            # +1 → right, -1 → left
+        self._wandering = False
+        self._wander_phase = "walk"   # "walk" | "pause"
+        self._phase_ticks = 0
+        self._drag_offset: QPoint | None = None
+        self.move_timer = QTimer(self)
+        self.move_timer.timeout.connect(self._wander_tick)
+
         # First impression: pet waves on appear; transient logic falls back to idle.
         self.set_state("waving")
 
@@ -136,24 +153,31 @@ class PetWindow(QWidget):
         self.parent_timer.timeout.connect(self._check_parent_alive)
         self.parent_timer.start(3000)
 
-        self._drag_offset: QPoint | None = None
-
     def set_state(self, state: str) -> None:
         if state not in STATES:
             return
         self.current_state = state
+        if state == "idle":
+            self._start_wander()
+        else:
+            self._stop_wander()
+            self._play(state)
+
+    def _play(self, anim: str) -> None:
+        """Animate `anim` in place (no movement)."""
+        self._display_anim = anim
         self.frame_idx = 0
-        spec = STATES[state]
+        spec = STATES[anim]
         per_frame_ms = max(60, spec["duration"] // spec["frames"])
         self.anim_timer.start(per_frame_ms)
         self.transient_remaining = spec["frames"] * 2 if spec["transient"] else 0
         self._render()
 
     def _render(self) -> None:
-        self.label.setPixmap(self.frames[self.current_state][self.frame_idx])
+        self.label.setPixmap(self.frames[self._display_anim][self.frame_idx])
 
     def tick(self) -> None:
-        spec = STATES[self.current_state]
+        spec = STATES[self._display_anim]
         self.frame_idx = (self.frame_idx + 1) % spec["frames"]
         self._render()
         if spec["transient"]:
@@ -163,6 +187,53 @@ class PetWindow(QWidget):
                     QApplication.instance().quit()
                 else:
                     self.set_state("idle")
+
+    # ─── idle wander ────────────────────────────────────────────────────────
+
+    def _start_wander(self) -> None:
+        """Idle behaviour: stroll left/right along the screen bottom using the
+        directional run sprites, pausing now and then for a natural feel."""
+        self._wandering = True
+        self._begin_walk()
+        self.move_timer.start(self.WALK_INTERVAL_MS)
+
+    def _stop_wander(self) -> None:
+        self._wandering = False
+        self.move_timer.stop()
+
+    def _begin_walk(self) -> None:
+        self._wander_phase = "walk"
+        self._phase_ticks = random.randint(40, 100)  # ~1.6-4s walking
+        self._play("running_right" if self._walk_dir > 0 else "running_left")
+
+    def _begin_pause(self) -> None:
+        self._wander_phase = "pause"
+        self._phase_ticks = random.randint(40, 75)  # ~1.6-3s standing
+        self._play("idle")
+
+    def _wander_tick(self) -> None:
+        if self._drag_offset is not None:
+            return  # user is dragging the pet — hold position
+        self._phase_ticks -= 1
+        if self._wander_phase == "pause":
+            if self._phase_ticks <= 0:
+                if random.random() < 0.5:
+                    self._walk_dir = -self._walk_dir
+                self._begin_walk()
+            return
+        screen = QApplication.primaryScreen().availableGeometry()
+        left_limit = screen.left() + self.EDGE_MARGIN
+        right_limit = screen.right() - self.width() - self.EDGE_MARGIN
+        x = self.x() + self._walk_dir * self.WALK_SPEED_PX
+        if x <= left_limit:
+            x, self._walk_dir = left_limit, 1
+            self._play("running_right")
+        elif x >= right_limit:
+            x, self._walk_dir = right_limit, -1
+            self._play("running_left")
+        self.move(x, self.y())
+        if self._phase_ticks <= 0:
+            self._begin_pause()
 
     def poll_state(self) -> None:
         try:

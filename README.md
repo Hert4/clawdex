@@ -36,7 +36,7 @@ In Claude Code:
 /plugin marketplace add Hert4/clawdex
 
 # 3. Install the plugin
-/plugin install clawdex@Hert4-clawdex
+/plugin install clawdex@clawdex
 
 # 4. Restart Claude Code so SessionStart hook can fire
 ```
